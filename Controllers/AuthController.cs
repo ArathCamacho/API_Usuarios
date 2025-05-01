@@ -1,5 +1,12 @@
 ﻿using API_Usuarios.Models;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using API_Usuarios.Data;
+using API_Usuarios.Helpers;
+using Microsoft.EntityFrameworkCore;
+using BC = BCrypt.Net.BCrypt;
 
 namespace API_Usuarios.Controllers
 {
@@ -7,37 +14,75 @@ namespace API_Usuarios.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly ApplicationDbContext _context;
+        private readonly JwtHelper _jwtHelper;
 
-        public AuthController(IAuthService authService)
+        public AuthController(ApplicationDbContext context, JwtHelper jwtHelper)
         {
-            _authService = authService;
+            _context = context;
+            _jwtHelper = jwtHelper;
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<LoginRequest>> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<LoginResponse>> Login(LoginRequest loginRequest)
         {
+            // Validar el modelo
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new LoginResponse
+                {
+                    Success = false,
+                    Message = "Datos de inicio de sesión inválidos"
+                });
+            }
+
             try
             {
-                var response = await _authService.LoginAsync(request);
+                // Buscar el usuario por nombre de usuario o email
+                var usuario = await _context.Usuarios
+                    .FirstOrDefaultAsync(u =>
+                        u.Username == loginRequest.UsernameOrEmail ||
+                        u.Email == loginRequest.UsernameOrEmail);
 
-                if (!response.Success)
+                // Verificar si el usuario existe
+                if (usuario == null)
                 {
-                    return Unauthorized(response);
+                    return Unauthorized(new LoginResponse
+                    {
+                        Success = false,
+                        Message = "Usuario o contraseña incorrectos"
+                    });
                 }
 
-                // No devolver la contraseña hasheada en la respuesta
-                response.Usuario.Password = null;
+                // Verificar la contraseña
+                if (!BC.Verify(loginRequest.Password, usuario.Password))
+                {
+                    return Unauthorized(new LoginResponse
+                    {
+                        Success = false,
+                        Message = "Usuario o contraseña incorrectos"
+                    });
+                }
 
-                return Ok(response);
+                // Generar el token JWT
+                var token = _jwtHelper.GenerateToken(usuario);
+
+                // Devolver la respuesta exitosa
+                return Ok(new LoginResponse
+                {
+                    Success = true,
+                    Token = token,
+                    Username = usuario.Username,
+                    UserId = usuario.Id,
+                    Message = "Inicio de sesión exitoso"
+                });
             }
             catch (Exception ex)
             {
-                // Log the error
-                return StatusCode(500, new LoginRequest
+                return StatusCode(500, new LoginResponse
                 {
                     Success = false,
-                    Message = "Ha ocurrido un error interno al procesar su solicitud."
+                    Message = "Error al procesar la solicitud: " + ex.Message
                 });
             }
         }
