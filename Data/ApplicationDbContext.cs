@@ -11,13 +11,15 @@ namespace API_Usuarios.Data
         {
         }
 
-       public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<JefeDepartamento> JefesDepartamento { get; set; }
+        public DbSet<Maestros> Maestros { get; set; } // 👈 Agregado nuevo DbSet
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configuraciones adicionales para la entidad Usuario
+            // Configuración Usuario
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
@@ -25,6 +27,29 @@ namespace API_Usuarios.Data
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            // Configuración JefeDepartamento
+            modelBuilder.Entity<JefeDepartamento>()
+                .HasIndex(j => j.Nombre)
+                .IsUnique();
+
+            modelBuilder.Entity<JefeDepartamento>()
+                .Property(j => j.NumeroTarjeta)
+                .IsRequired();
+
+            // Configuración Maestro
+            modelBuilder.Entity<Maestros>()
+                .HasIndex(m => m.ClaveMaestro)
+                .IsUnique();
+
+            modelBuilder.Entity<Maestros>()
+                .Property(m => m.Nombre).IsRequired();
+
+            modelBuilder.Entity<Maestros>()
+                .Property(m => m.ApellidoPaterno).IsRequired();
+
+            modelBuilder.Entity<Maestros>()
+                .Property(m => m.CorreoElectronico).IsRequired();
         }
 
     }

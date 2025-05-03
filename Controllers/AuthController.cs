@@ -1,8 +1,5 @@
 ﻿using API_Usuarios.Models;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using API_Usuarios.Data;
 using API_Usuarios.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -24,67 +21,31 @@ namespace API_Usuarios.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<LoginResponse>> Login(LoginRequest loginRequest)
+        public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
         {
-            // Validar el modelo
             if (!ModelState.IsValid)
             {
-                return BadRequest(new LoginResponse
-                {
-                    Success = false,
-                    Message = "Datos de inicio de sesión inválidos"
-                });
+                return BadRequest(new LoginResponse { Success = false, Message = "Datos inválidos" });
             }
 
-            try
+            var jefe = await _context.JefesDepartamento
+                .FirstOrDefaultAsync(j => j.Nombre == request.Nombre);
+
+            if (jefe == null || !BC.Verify(request.NumeroTarjeta, jefe.NumeroTarjeta))
             {
-                // Buscar el usuario por nombre de usuario o email
-                var usuario = await _context.Usuarios
-                    .FirstOrDefaultAsync(u =>
-                        u.Username == loginRequest.UsernameOrEmail ||
-                        u.Email == loginRequest.UsernameOrEmail);
-
-                // Verificar si el usuario existe
-                if (usuario == null)
-                {
-                    return Unauthorized(new LoginResponse
-                    {
-                        Success = false,
-                        Message = "Usuario o contraseña incorrectos"
-                    });
-                }
-
-                // Verificar la contraseña
-                if (!BC.Verify(loginRequest.Password, usuario.Password))
-                {
-                    return Unauthorized(new LoginResponse
-                    {
-                        Success = false,
-                        Message = "Usuario o contraseña incorrectos"
-                    });
-                }
-
-                // Generar el token JWT
-                var token = _jwtHelper.GenerateToken(usuario);
-
-                // Devolver la respuesta exitosa
-                return Ok(new LoginResponse
-                {
-                    Success = true,
-                    Token = token,
-                    Username = usuario.Username,
-                    UserId = usuario.Id,
-                    Message = "Inicio de sesión exitoso"
-                });
+                return Unauthorized(new LoginResponse { Success = false, Message = "Nombre o número de tarjeta incorrectos" });
             }
-            catch (Exception ex)
+
+            var token = _jwtHelper.GenerateToken(jefe);
+
+            return Ok(new LoginResponse
             {
-                return StatusCode(500, new LoginResponse
-                {
-                    Success = false,
-                    Message = "Error al procesar la solicitud: " + ex.Message
-                });
-            }
+                Success = true,
+                Message = "Inicio de sesión exitoso",
+                Token = token,
+                Nombre = jefe.Nombre,
+                JefeId = jefe.Id
+            });
         }
     }
 }
