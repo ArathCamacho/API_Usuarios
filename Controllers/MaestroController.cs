@@ -18,16 +18,20 @@ namespace API_Usuarios.Controllers
 
         // GET: api/maestros
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Maestros>>> GetMaestros([FromQuery] string nombre)
+        public async Task<ActionResult<IEnumerable<Maestros>>> GetMaestros([FromQuery] string? nombre)
         {
             var query = _context.Maestros.AsQueryable();
 
+            // Si 'nombre' es proporcionado, filtra por el nombre
             if (!string.IsNullOrEmpty(nombre))
             {
                 query = query.Where(m => m.Nombre.Contains(nombre));
-            }   
+            }
 
+            // Obtiene los resultados de la consulta
             var resultados = await query.ToListAsync();
+
+            // Devuelve los resultados
             return Ok(resultados);
         }
 
@@ -42,6 +46,7 @@ namespace API_Usuarios.Controllers
 
             return maestro;
         }
+
 
         // POST: api/maestros
         [HttpPost]
