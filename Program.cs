@@ -42,13 +42,12 @@ namespace API_Usuarios
 
             builder.Services.AddScoped<JwtHelper>();
 
-            // Configuración de CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowMyApp",
+                options.AddPolicy("AllowLocalApps",
                     policy =>
                     {
-                        policy.WithOrigins("http://127.0.0.1:8000") // Asegúrate de usar la dirección correcta
+                        policy.WithOrigins("http://127.0.0.1:8000", "http://localhost:3000")
                             .AllowAnyHeader()
                             .AllowAnyMethod();
                     });
@@ -64,9 +63,10 @@ namespace API_Usuarios
 
             app.UseHttpsRedirection();
 
-            // Usar la política CORS correcta
-            app.UseCors("AllowReactApp");
-            app.UseCors("AllowMyApp");
+
+            app.UseCors("AllowLocalApps");
+
+
 
 
             app.UseAuthentication();  // No olvides agregar esta línea para usar autenticación JWT
